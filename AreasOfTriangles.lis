@@ -1,0 +1,510 @@
+     1                                  ;Author information
+     2                                  ;  Author name: Art Grichine
+     3                                  ;  Author email: ArtGrichine@gmail.com
+     4                                  ;Course information
+     5                                  ;  Course number: CPSC240
+     6                                  ;  Assignment number: 2
+     7                                  ;  Due date: 2014-Feb-11
+     8                                  ;Project information
+     9                                  ;  Project title: Areas of Triangles (Assignment 2)
+    10                                  ;  Purpose: Preform vector processing on four different triangles at once. User input sides of triangles; Output triangle area
+    11                                  ;  Status: No known errors
+    12                                  ;  Project files: AreasOfTriangles.cpp, AreasOfTriangles.asm, debug.inc, debug.asm
+    13                                  ;Module information
+    14                                  ;  This module's call name: AreasOfTriangles
+    15                                  ;  Language: X86-64
+    16                                  ;  Syntax: Intel
+    17                                  ;  Date last modified: 2014-Feb-06
+    18                                  ;  Purpose: Preform vector processing on four triangles at once. The calculation will find the area of each triangle
+    19                                  ;  File name: AreasOfTriangles.asm
+    20                                  ;  Status: In production.  No known errors.
+    21                                  ;  Future enhancements: None planned
+    22                                  ;Translator information
+    23                                  ;  Assemble: nasm -f elf64 -l AreasOfTriangles.lis -o AreasOfTriangles.o AreasOfTriangles.asm
+    24                                  ;References and credits
+    25                                  ;  Professor Floyd Holliday/CSUF
+    26                                  ;Print information
+    27                                  ;  Page width: 132 columns
+    28                                  ;  Begin comments: 65
+    29                                  ;  Optimal print specification: Landscape, 9 points or smaller, monospace, 8Â1⁄2x11 paper
+    30                                  ;
+    31                                  ;===== Begin code area ============================================================================================================
+    32                                  
+    33                                  %include "debug.inc" 					    ;This file contains the subprogram to be tested with this test program.
+    34                              <1> ;System Title:  Debugger for X86 assembly programs
+    35                              <1> ;Author: Floyd Holliday
+    36                              <1> ;Email: activeprofessor@yahoo.com
+    37                              <1> ;Status: Released for general use; bugs will be fixed when reported
+    38                              <1> ;This module file name: debug.inc
+    39                              <1> ;This module purpose: This file is an "include" file.  It allows data to pass directly from the calling statement to the subprogram.
+    40                              <1> ;Language: X86
+    41                              <1> ;Syntax: Intel
+    42                              <1> ;Date of last update: 2013-Dec-13
+    43                              <1> ;Source file structure: width is 140 characters; detailed comments begin in column 61.
+    44                              <1> ;Printing: best results are obtained using landscape orientation with 9 point (or less) monospaced font.
+    45                              <1> ;
+    46                              <1> ;Targeted user group: Assembly programmers enrolled in programming courses like CPSC240.
+    47                              <1> ;
+    48                              <1> ;Requirements: debug.asm must be assembled into debug.o  This file is not to be assembled; it is used as is.  Place this file in the 
+    49                              <1> ;directory along with debug.o and with other assembled object files.
+    50                              <1> ;
+    51                              <1> 
+    52                              <1> ;===== showregisters ======================================================================================================================
+    53                              <1> 
+    54                              <1> extern showregisterssubprogram
+    55                              <1> 
+    56                              <1> %macro showregisters 1
+    57                              <1>     push qword %1
+    58                              <1>     call showregisterssubprogram
+    59                              <1>     ;Question: Where is the pop corresponding to the push above?  Answer: In the ret statement.
+    60                              <1> %endmacro
+    61                              <1> 
+    62                              <1> ;===== showstack ==========================================================================================================================
+    63                              <1> 
+    64                              <1> extern showstacksubprogram
+    65                              <1> 
+    66                              <1> %macro dumpstack 3
+    67                              <1>     push rsp                                      ;Save the current value of rsp since rsp is very volatile
+    68                              <1>     push rbp                                      ;Save the current value of rbp for insurance
+    69                              <1>     push qword %3                                 ;number of qwords inside the stack
+    70                              <1>     push qword %2                                 ;number of qwords outside the stack
+    71                              <1>     push qword %1                                 ;an arbitrary integer created by the caller
+    72                              <1>     call showstacksubprogram
+    73                              <1>     ;Question: Where are the pops corresponding to three pushes above?  Answer: In the ret statement.
+    74                              <1> %endmacro
+    75                              <1> 
+    76                              <1> ;===== showfpu ============================================================================================================================
+    77                              <1> 
+    78                              <1> extern showfpusubprogram
+    79                              <1> 
+    80                              <1> %macro showfpuregisters 1
+    81                              <1>     push qword %1                                 ;Integer identifying this showing of the fpu registers.
+    82                              <1>     call showfpusubprogram
+    83                              <1>     ;Where are the pops corresponding to those pushes?
+    84                              <1> %endmacro
+    85                              <1> 
+    86                              <1> ;===== showxmm ============================================================================================================================
+    87                              <1> 
+    88                              <1> extern showxmmsubprogram
+    89                              <1> 
+    90                              <1> %macro showxmmregisters 1
+    91                              <1>      push qword %1
+    92                              <1>      call showxmmsubprogram
+    93                              <1> %endmacro
+    94                              <1> 
+    95                              <1> ;===== showymm ============================================================================================================================
+    96                              <1> 
+    97                              <1> extern showymmsubprogram
+    98                              <1> 
+    99                              <1> %macro showymmregisters 1
+   100                              <1>     push qword %1
+   101                              <1>     call showymmsubprogram
+   102                              <1> %endmacro
+   103                              <1> 
+   104                              <1> ;==========================================================================================================================================
+   105                              <1> 
+   106                              <1> ;How to use the debugger.
+   107                              <1> 
+   108                              <1> ;1.  Assemble the file debug.asm and thereby create an object file known as debug.o
+   109                              <1> 
+   110                              <1> ;2.  Place into one single directory this file, debug.inc, and debug.o, and as many addition source file as desired.
+   111                              <1> 
+   112                              <1> ;3.  Insert the statement < %include "debug.inc" > without angle brackets into an asm source file to be debugged.  Place the statement 
+   113                              <1> ;    before segment .data .
+   114                              <1> 
+   115                              <1> ;4.  In segment .text place debugging statements at places where you want to examen the contents of registers.  There are four kinds 
+   116                              <1> ;    of debug statements, namely: show the integer registers, show the system stack, show the fpu registers, and show the SSE2 
+   117                              <1> ;    registers.  Examples of each of the four kinds of debug statements are found below.
+   118                              <1> 
+   119                              <1> ;Example of debug statememts.
+   120                              <1> 
+   121                              <1> ;==============================================
+   122                              <1> ;  showregisters 33
+   123                              <1> ;==============================================
+   124                              <1> ;The statement above will show the contents of all 16 integer registers and the contents of the flags register.  The trailing number 33 
+   125                              <1> ;is arbitrary.  The number 33 in the example can be replaced with any integer, but it cannot be omitted.
+   126                              <1> 
+   127                              <1> ;==============================================
+   128                              <1> ;  dumpstack 88, 2, 5
+   129                              <1> ;==============================================
+   130                              <1> ;The statement above will show the contents the system stack beginning with 2 quadwords outside of the top of the stack and ending with
+   131                              <1> ;quadword #5 inside the stack for a total of 8 quadwords.  The first parameter 88 is an arbitrary integer selected by the programmer.
+   132                              <1> ;The second parameter 2 indicates the number of quadwords beyond the top to be displayed.  To display nothing outside of the stack set
+   133                              <1> ;the middle parameter to 0.  The last parameter 5 is the number of qwords after the top to be display.  The count is from 0 to 5, and
+   134                              <1> ;therefore, a 5 parameter will cause 6 qwords inside the stack to be outputted.
+   135                              <1> 
+   136                              <1> ;==============================================
+   137                              <1> ;  showfpuregisters 133
+   138                              <1> ;==============================================
+   139                              <1> ;The statement above will show the contents of all 8 fpu registers.  The parameter 133 is arbitrary and may be replaced by any integer,
+   140                              <1> ;but it cannot be omitted.
+   141                              <1> 
+   142                              <1> ;==============================================
+   143                              <1> ;  showxmmregisters 888
+   144                              <1> ;==============================================
+   145                              <1> ;The statement above will show the contents of all 16 SSE2 registers.  The parameter 888 is arbitrary and may be replaced by any integer,
+   146                              <1> ;but it cannot be omitted.
+   147                              <1> 
+   148                              <1> ;==============================================
+   149                              <1> ;  showymmregisters 225
+   150                              <1> ;==============================================
+   151                              <1> ;The statement above will show the contents of all 16 AVE registers.  The parameter 225 is arbitrary and may be replaced by any integer,
+   152                              <1> ;but it cannot be omitted.
+   153                              <1> 
+   154                              <1> 
+   155                              <1> 
+   156                              <1> 
+   157                              <1> ;To the 240 class:
+   158                              <1> ;This debug set of subprograms was derived from the original work of Dr Paul Carter.  He made a similar set of subprograms that could 
+   159                              <1> ;be easily included in any assembly program.  All of his work was written in X86-32m and unfortunately, he seems to have lost interest 
+   160                              <1> ;in updating his work.  You can and probably should visit his website: http://www.drpaulcarter.com/pcasm/.  There you may download the
+   161                              <1> ;original include files which he called "asm_io.inc" and "asm_io.asm".  They are inside a zip file.  He also has a free ebook there on 
+   162                              <1> ;X86-32 programming.  Yes, all the examples are 32-bit one, but the text description of instructions is still very helpful.  For 
+   163                              <1> ;instance, in his ebook you can read a concise description of many of the FPU87 instructions, that is, those instructions that act on
+   164                              <1> ;the st registers.  Yes, I am aware that others have tried to update his work to become relevant to 64-bit programming, but I still like
+   165                              <1> ;the original ebook.
+   166                              <1> 
+   167                              <1> ;Thus, Dr Carter's work was the foundation for the debug.inc and debug.asm files you are now reading.  For the curious, you may wonder 
+   168                              <1> ;what happens when an assembly program has to call a C++ function that requires more that 6 incoming parameters.  There is an example of
+   169                              <1> ;passing 9 parameters to printf in the "showregisterssubprogram", which is inside the file debug.asm.  Notice the registerformat1 requires 8 numeric
+   170                              <1> ;values be passed to printf in addition to passing the string registerformat1 in rdi.  
+   171                              <1> 
+   172                              <1> 
+   173                              <1> 
+   174                                  
+   175                                  extern printf						    ;External C++ function for writing to standard output device
+   176                                  
+   177                                  extern scanf						    ;External C++ function for obtaining user input
+   178                                  
+   179                                  global AreasOfTriangles 				    ;This makes AreasOfTriangles callable by functions outside of this file.
+   180                                  
+   181                                  segment .data						    ;Place initialized data here
+   182                                  
+   183                                  ;===== Message Declarations =======================================================================================================
+   184                                  
+   185 00000000 0A57656C636F6D6520-     welcome db 10, "Welcome to Triangles by Art Grichine!", 10,
+   186 00000009 746F20547269616E67-
+   187 00000012 6C6573206279204172-
+   188 0000001B 74204772696368696E-
+   189 00000024 65210A             
+   190 00000027 546869732070726F67-             db     "This program was tested on a MacBook Pro (late 2013) running at 2.6GHz.", 10,
+   191 00000030 72616D207761732074-
+   192 00000039 6573746564206F6E20-
+   193 00000042 61204D6163426F6F6B-
+   194 0000004B 2050726F20286C6174-
+   195 00000054 652032303133292072-
+   196 0000005D 756E6E696E67206174-
+   197 00000066 20322E3647487A2E0A 
+   198 0000006F 546869732070726F67-             db     "This program will compute the areas of four triangles using vector processing", 10, 0
+   199 00000078 72616D2077696C6C20-
+   200 00000081 636F6D707574652074-
+   201 0000008A 686520617265617320-
+   202 00000093 6F6620666F75722074-
+   203 0000009C 7269616E676C657320-
+   204 000000A5 7573696E6720766563-
+   205 000000AE 746F722070726F6365-
+   206 000000B7 7373696E670A00     
+   207                                  
+   208 000000BE 0A456E746572206C65-     enter_number_tri1 db 10, "Enter lengths of sides of the first triangle separated by white space: ", 0 
+   209 000000C7 6E67746873206F6620-
+   210 000000D0 7369646573206F6620-
+   211 000000D9 746865206669727374-
+   212 000000E2 20747269616E676C65-
+   213 000000EB 207365706172617465-
+   214 000000F4 642062792077686974-
+   215 000000FD 652073706163653A20-
+   216 00000106 00                 
+   217 00000107 456E746572206C656E-     enter_number_tri2 db     "Enter lengths of sides of the second triangle separated by white space: ", 0 
+   218 00000110 67746873206F662073-
+   219 00000119 69646573206F662074-
+   220 00000122 6865207365636F6E64-
+   221 0000012B 20747269616E676C65-
+   222 00000134 207365706172617465-
+   223 0000013D 642062792077686974-
+   224 00000146 652073706163653A20-
+   225 0000014F 00                 
+   226 00000150 456E746572206C656E-     enter_number_tri3 db     "Enter lengths of sides of the third triangle separated by white space: ", 0
+   227 00000159 67746873206F662073-
+   228 00000162 69646573206F662074-
+   229 0000016B 686520746869726420-
+   230 00000174 747269616E676C6520-
+   231 0000017D 736570617261746564-
+   232 00000186 206279207768697465-
+   233 0000018F 2073706163653A2000 
+   234 00000198 456E746572206C656E-     enter_number_tri4 db     "Enter lengths of sides of the fourth triangle separated by white space: ", 0 
+   235 000001A1 67746873206F662073-
+   236 000001AA 69646573206F662074-
+   237 000001B3 686520666F75727468-
+   238 000001BC 20747269616E676C65-
+   239 000001C5 207365706172617465-
+   240 000001CE 642062792077686974-
+   241 000001D7 652073706163653A20-
+   242 000001E0 00                 
+   243                                  
+   244 000001E1 0A5468652061726561-     format_area_of_tri1 db 10, "The area of the first triangle is %5.20lf square units.", 10, 0
+   245 000001EA 206F66207468652066-
+   246 000001F3 697273742074726961-
+   247 000001FC 6E676C652069732025-
+   248 00000205 352E32306C66207371-
+   249 0000020E 7561726520756E6974-
+   250 00000217 732E0A00           
+   251 0000021B 546865206172656120-     format_area_of_tri2 db     "The area of the second triangle is %5.20lf square units.", 10, 0
+   252 00000224 6F6620746865207365-
+   253 0000022D 636F6E642074726961-
+   254 00000236 6E676C652069732025-
+   255 0000023F 352E32306C66207371-
+   256 00000248 7561726520756E6974-
+   257 00000251 732E0A00           
+   258 00000255 546865206172656120-     format_area_of_tri3 db     "The area of the third triangle is %5.20lf square units.", 10, 0
+   259 0000025E 6F6620746865207468-
+   260 00000267 69726420747269616E-
+   261 00000270 676C65206973202535-
+   262 00000279 2E32306C6620737175-
+   263 00000282 61726520756E697473-
+   264 0000028B 2E0A00             
+   265 0000028E 546865206172656120-     format_area_of_tri4 db     "The area of the fourth triangle is %5.20lf square units.", 10, 0
+   266 00000297 6F662074686520666F-
+   267 000002A0 757274682074726961-
+   268 000002A9 6E676C652069732025-
+   269 000002B2 352E32306C66207371-
+   270 000002BB 7561726520756E6974-
+   271 000002C4 732E0A00           
+   272                                    
+   273 000002C8 0A456E6A6F7920796F-     goodbye db 10, "Enjoy your triangles.", 10, 0 
+   274 000002D1 757220747269616E67-
+   275 000002DA 6C65732E0A00       
+   276                                  
+   277 000002E0 257300                  stringformat db "%s", 0						;general string format
+   278                                  
+   279 000002E3 256C6620256C6600        formatTwoFloats db "%lf %lf", 0					;lowercase l is for double (64-bit)
+   280                                  
+   281                                  segment .bss							;Place un-initialized data here.
+   282                                  
+   283                                          ;This segment is empty
+   284                                  
+   285                                  segment .text							;Place executable instructions in this segment.
+   286                                  
+   287                                  AreasOfTriangles:						;Entry point.  Execution begins here.
+   288                                  
+   289                                  ;=========== Back up all the integer registers used in this program ===============================================================
+   290                                  
+   291 00000000 55                      push rbp 							;Backup the stack base pointer
+   292 00000001 57                      push rdi 							;Backup the destination index
+   293 00000002 56                      push rsi 							;Backup the source index
+   294 00000003 52                      push rdx 
+   295 00000004 52                      push rdx
+   296                                  
+   297                                  ;============  Preliminary ========================================================================================================
+   298                                  
+   299 00000005 C5FC77                  vzeroall							;zeros out all SSE registers
+   300 00000008 6A00                    push qword 0							;create storage for an input number on int stack (8 total)
+   301 0000000A 6A00                    push qword 0							;create storage for an input number on int stack
+   302 0000000C 6A00                    push qword 0							;create storage for an input number on int stack
+   303 0000000E 6A00                    push qword 0							;create storage for an input number on int stack
+   304 00000010 6A00                    push qword 0							;create storage for an input number on int stack
+   305 00000012 6A00                    push qword 0							;create storage for an input number on int stack
+   306 00000014 6A00                    push qword 0							;create storage for an input number on int stack
+   307 00000016 6A00                    push qword 0							;create storage for an input number on int stack
+   308                                  
+   309                                  ;=========== Initialize divider register ==========================================================================================
+   310                                  
+   311 00000018 48B800000000000000-     mov rax, 0x4000000000000000 					;copy HEX 2.0 value onto rax
+   312 00000021 40                 
+   313 00000022 50                      push rax							;push rax value onto the stack for broadcast operation
+   314 00000023 C4627D190C24            vbroadcastsd ymm9, [rsp]					;makes ymm all 2.0
+   315 00000029 58                      pop rax								;push operand must be followed by a pop operation when complete
+   316                                  
+   317                                  ;=========== Show the initial message =============================================================================================
+   318                                  
+   319 0000002A B800000000              mov qword rax, 0
+   320 0000002F 48BF-                   mov rdi, stringformat 						;simple format indicating string ' "%s",0 '
+   321 00000031 [E002000000000000] 
+   322 00000039 48BE-                   mov rsi, welcome 						;display: Welcome Message, Name, Machine, Purpose of Assignment 
+   323 0000003B [0000000000000000] 
+   324 00000043 E8(00000000)            call printf
+   325                                  
+   326                                  ;============ Input Triangle 1 ====================================================================================================
+   327                                  
+   328                                  ;==== Display message for Triangle 1 ====
+   329 00000048 B800000000              mov qword rax, 0						;satisfies printf function, expects no float in upcoming printf
+   330 0000004D 48BF-                   mov rdi, stringformat
+   331 0000004F [E002000000000000] 
+   332 00000057 48BE-                   mov rsi, enter_number_tri1 					;asks user to enter two numbers seperated by a space
+   333 00000059 [BE00000000000000] 
+   334 00000061 E8(00000000)            call printf
+   335                                  
+   336                                  ;==== Grab data for Triangle 1 ====
+   337 00000066 4831C0                  xor rax, rax							;same as 'mov rax, 0'
+   338 00000069 48BF-                   mov rdi, formatTwoFloats 					;formats input of scanf to recieve two numbers "%lf %lf"
+   339 0000006B [E302000000000000] 
+   340 00000073 4889E6                  mov rsi, rsp							;assign register to copy stack pointer location to absorb tri 1 s1
+   341 00000076 4889E2                  mov rdx, rsp							;rdx also assigned to pointer to accomidate the second number
+   342 00000079 4883C220                add rdx, 32							;rdx+32 puts it in the 5th position in the stack; side 1 for all
+   343                                  								;four triangles will go in stack rsp through rsp+28, rsp+32 through
+   344                                  								;rsp+56 will absorb the second side of all triangles
+   345 0000007D E8(00000000)            call scanf
+   346                                  
+   347                                  ;============ Input Triangle 2 ====================================================================================================
+   348                                  
+   349                                  ;==== Display message for Triangle 2 ====
+   350 00000082 B800000000              mov qword rax, 0
+   351 00000087 48BF-                   mov rdi, stringformat
+   352 00000089 [E002000000000000] 
+   353 00000091 48BE-                   mov rsi, enter_number_tri2 
+   354 00000093 [0701000000000000] 
+   355 0000009B E8(00000000)            call printf
+   356                                  
+   357                                  ;==== Grab data for Triangle 2 ====
+   358 000000A0 4831C0                  xor rax, rax							;same as 'mov rax, 0'
+   359 000000A3 48BF-                   mov rdi, formatTwoFloats 					;format to absorb two numbers: "%lf %lf"
+   360 000000A5 [E302000000000000] 
+   361 000000AD 4889E6                  mov rsi, rsp							;set location of tri2 side1 to be at rsp+8 (next function)
+   362 000000B0 4883C608                add rsi, 8							;assign register to copy stack pointer location to absorb tri 2 s1
+   363 000000B4 4889E2                  mov rdx, rsp							;set location of tri2 side2 to be at rsp+40 (next function)
+   364 000000B7 4883C228                add rdx, 40							;mov register to 5th position to absorb tri 2 side 2
+   365 000000BB E8(00000000)            call scanf
+   366                                  
+   367                                  ;============ Grab Triangle 3 =====================================================================================================
+   368                                  
+   369                                  ;==== Display message for Triangle 3 ====
+   370 000000C0 B800000000              mov qword rax, 0
+   371 000000C5 48BF-                   mov rdi, stringformat
+   372 000000C7 [E002000000000000] 
+   373 000000CF 48BE-                   mov rsi, enter_number_tri3 
+   374 000000D1 [5001000000000000] 
+   375 000000D9 E8(00000000)            call printf
+   376                                  
+   377                                  ;==== Grab data for Triangle 3 ====
+   378 000000DE 4831C0                  xor rax, rax							;same as 'mov rax, 0'
+   379 000000E1 48BF-                   mov rdi, formatTwoFloats 					;format to absorb two numbers: "%lf %lf"
+   380 000000E3 [E302000000000000] 
+   381 000000EB 4889E6                  mov rsi, rsp							;set location of tri3 side1 to be at rsp+16 (next function)
+   382 000000EE 4883C610                add rsi, 16							;assign register to copy stack pointer location to absorb tri 3 s1
+   383 000000F2 4889E2                  mov rdx, rsp							;set location of tri3 side2 to be at rsp+48 (next function)
+   384 000000F5 4883C230                add rdx, 48 							;mov register to 5th position to absorb tri 3 side 2
+   385 000000F9 E8(00000000)            call scanf						
+   386                                  
+   387                                  ;============ Grab Triangle 4 =====================================================================================================
+   388                                  
+   389                                  ;==== Display message for Triangle 4 ====
+   390 000000FE B800000000              mov qword rax, 0
+   391 00000103 48BF-                   mov rdi, stringformat
+   392 00000105 [E002000000000000] 
+   393 0000010D 48BE-                   mov rsi, enter_number_tri4 
+   394 0000010F [9801000000000000] 
+   395 00000117 E8(00000000)            call printf
+   396                                  
+   397                                  ;==== Grab data for Triangle 4 ====
+   398 0000011C 4831C0                  xor rax, rax							;same as 'mov rax, 0'
+   399 0000011F 48BF-                   mov rdi, formatTwoFloats 					;format to absorb two numbers: "%lf %lf"
+   400 00000121 [E302000000000000] 
+   401 00000129 4889E6                  mov rsi, rsp							;set location of tri4 side1 to be at rsp+24 (next function)
+   402 0000012C 4883C618                add rsi, 24							;assign register to copy stack pointer location to absorb tri 4 s1
+   403 00000130 4889E2                  mov rdx, rsp							;set location of tri4 side2 to be at rsp+56 (next function)
+   404 00000133 4883C238                add rdx, 56							;mov register to 5th position to absorb tri 4 side 2
+   405 00000137 E8(00000000)            call scanf
+   406                                  
+   407                                  ;============ Move int stack into ymm registers ===================================================================================
+   408                                  
+   409 0000013C C5FD102424              vmovupd ymm4, [rsp] 						;moves side 1 of triangles into ymm4 register, first 4 #'s in stack 
+   410                                  								;'p' lets us grab four locations starting at rsp
+   411 00000141 C5FD106C2420            vmovupd ymm5, [rsp+32] 						;moves side 2 of triangles into ymm5 register, rsp+32 thru rsp+56 
+   412                                  
+   413                                  ;============ Calculate Area ======================================================================================================
+   414                                  
+   415 00000147 C5FD10F4                vmovupd ymm6, ymm4 						;backup ymm4 register,upcoming calculation will override ymm4 value
+   416 0000014B C5DD59E5                vmulpd ymm4, ymm5 						;(ymm4 * ymm5) = result stores in ymm4
+   417 0000014F C4C15D5EE1              vdivpd ymm4, ymm9						;(ymm4 / ymm9 <- 2.0 constant) = result stores in ymm4
+   418                                  
+   419 00000154 C5FD10C4                vmovupd ymm0, ymm4						;places calculated area from ymm4 into ymm0 for output (print)
+   420                                  
+   421                                  ;========== Output ================================================================================================================
+   422                                  ;a note on output, the 'printf' function corrupts xmm 0 and xmm1 after being called. We must keep a back-up of our intended output
+   423                                  ;so that we may bring it down before every new output. Also printf prints from the xmm0.0 registry, our triangle areas must find
+   424                                  ;there way to xmm0.0 one by one:
+   425                                  
+   426                                  ;Output Triangle 1						;Tri 1 area located in xmm0 first position
+   427 00000158 B801000000              mov rax, 1							
+   428 0000015D 48BF-                   mov rdi, format_area_of_tri1 					;print area of tri1
+   429 0000015F [E101000000000000] 
+   430 00000167 6A00                    push qword 0							;Allocate storage for output value
+   431 00000169 6A00                    push qword 0							;memory failure without this extra push
+   432 0000016B E8(00000000)            call printf
+   433 00000170 58                      pop rax								;undo previous memory allocation 
+   434 00000171 58                      pop rax								;undo previous memory allocation 
+   435                                  
+   436                                  ;setup output for triangle 2					;we must swap the xmm0 registry to get Triangle 2
+   437 00000172 C5FD10DC                vmovupd ymm3, ymm4 						;printf is stupid and ruins xmm0/xmm1, we must use copy ymm4
+   438 00000176 C4E37D05D31B            vpermilpd ymm2, ymm3, 0x1B 					;swap, 0x1B gives us transformation 4321 --> 4322
+   439 0000017C C5FD10C2                vmovupd ymm0, ymm2						;copy our result after transformation into output location  ymm0
+   440                                  
+   441                                  ;Output Triangle 2
+   442 00000180 B801000000              mov rax, 1
+   443 00000185 48BF-                   mov rdi, format_area_of_tri2 
+   444 00000187 [1B02000000000000] 
+   445 0000018F 6A00                    push qword 0							;Allocate storage for output value
+   446 00000191 6A00                    push qword 0							;memory failure without extra push
+   447 00000193 E8(00000000)            call printf
+   448 00000198 58                      pop rax								;undo previous memory allocation
+   449 00000199 58                      pop rax								;undo previous memory allocation
+   450                                  
+   451                                  ;setup output for triangle 3					;move from 4322 --> 2243
+   452 0000019A C4E37D19C101            vextractf128 xmm1, ymm0, 1 					;shift of ymm into xmm, ABCC --> CCAB
+   453 000001A0 C5FD10C1                vmovupd ymm0, ymm1						;copy values into output location 'ymm0'
+   454                                  
+   455                                  ;Output Triangle 3
+   456 000001A4 B801000000              mov rax, 1
+   457 000001A9 48BF-                   mov rdi, format_area_of_tri3 
+   458 000001AB [5502000000000000] 
+   459 000001B3 6A00                    push qword 0							;Allocate storage for output value
+   460 000001B5 6A00                    push qword 0							;memory failure without extra push
+   461 000001B7 E8(00000000)            call printf
+   462 000001BC 58                      pop rax								;undo previous memory allocation
+   463 000001BD 58                      pop rax								;undo previous memory allocation
+   464                                  
+   465                                  ;setup output for triangle 4/side1				;fresh copy used for triangle 4 from our back-up 'ymm4'
+   466 000001BE C4E37D19E301            vextractf128 xmm3, ymm4, 1 					;4321 --> 0043
+   467 000001C4 C4E37D05D31B            vpermilpd ymm2, ymm3, 0x1B 					;swap, 0x1B gives us transformation 0043 --> 0034, Tri4 is ready
+   468 000001CA C5FD10C2                vmovupd ymm0, ymm2						;copy the final triangle into the output location 'ymm0'
+   469                                  
+   470                                  ;Output Triangle 4
+   471 000001CE B801000000              mov rax, 1
+   472 000001D3 48BF-                   mov rdi, format_area_of_tri4 
+   473 000001D5 [8E02000000000000] 
+   474 000001DD 6A00                    push qword 0							;Allocate storage for output value
+   475 000001DF 6A00                    push qword 0							;memory failure without extra push
+   476 000001E1 E8(00000000)            call printf
+   477 000001E6 58                      pop rax								;undo previous memory allocation
+   478 000001E7 58                      pop rax								;undo previous memory allocation
+   479                                  
+   480                                  ;========== Conclusion message ====================================================================================================
+   481                                  
+   482 000001E8 B800000000              mov qword rax, 0
+   483 000001ED 48BF-                   mov 	  rdi, stringformat
+   484 000001EF [E002000000000000] 
+   485 000001F7 48BE-                   mov 	  rsi, goodbye 						;"Enjoy your triangles!" 
+   486 000001F9 [C802000000000000] 
+   487 00000201 E8(00000000)            call 	  printf
+   488                                  
+   489                                  ;=========== Now cleanup and return to the caller =================================================================================
+   490                                  
+   491 00000206 58                      pop       rax							;Undo memory allocation form initial input of triangle sides
+   492 00000207 58                      pop 	  rax	 						;Undo memory allocation form initial input of triangle sides
+   493 00000208 58                      pop 	  rax							;Undo memory allocation form initial input of triangle sides
+   494 00000209 58                      pop 	  rax  							;Undo memory allocation form initial input of triangle sides
+   495 0000020A 58                      pop 	  rax							;Undo memory allocation form initial input of triangle sides
+   496 0000020B 58                      pop 	  rax 							;Undo memory allocation form initial input of triangle sides
+   497 0000020C 58                      pop 	  rax							;Undo memory allocation form initial input of triangle sides
+   498 0000020D 58                      pop 	  rax 							;Undo memory allocation form initial input of triangle sides
+   499                                  
+   500 0000020E 5A                      pop 	  rdx 							;Restore original value
+   501 0000020F 5A                      pop 	  rdx 							;Required or memory core dump
+   502 00000210 5E                      pop 	  rsi 							;Restore original value
+   503 00000211 5F                      pop 	  rdi 							;Restore original value
+   504 00000212 5D                      pop 	  rbp							;Restore original value
+   505                                  
+   506 00000213 B801000000              mov qword rax, 1						;Return value of 1 to the driver
+   507                                  
+   508 00000218 C3                      ret
+   509                                                                                                 
+   510                                  ;========== End of program AreasOfTriangles.asm====================================================================================
